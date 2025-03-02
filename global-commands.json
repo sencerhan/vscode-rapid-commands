@@ -1,0 +1,8 @@
+{
+  "commands": [
+    {
+      "name": "SSH to Server",
+      "command": "ssh root@127.0.0.1"
+    }
+  ]
+}

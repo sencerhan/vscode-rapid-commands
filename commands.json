@@ -1,0 +1,8 @@
+{
+  "commands": [
+    {
+      "name": "NPM Install",
+      "command": "npm install"
+    }
+  ]
+}

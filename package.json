@@ -1,0 +1,152 @@
+{
+    "name": "vscode-rapid-commands",
+    "displayName": "Rapid Terminal Commands",
+    "description": "Run and manage your frequently used commands in VS Code",
+    "version": "1.0.0",
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onStartupFinished",
+        "onCommand:remote-command.run"
+    ],
+    "main": "./extension.js",
+    "contributes": {
+        "configuration": {
+            "title": "Command Runner",
+            "properties": {
+                "commandRunner.autoRun": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Automatically run commands after sending to terminal"
+                }
+            }
+        },
+        "commands": [
+            {
+                "command": "command-runner.addCommand",
+                "title": "Add New Command",
+                "icon": "$(add)"
+            },
+            {
+                "command": "command-runner.sendToCurrent",
+                "title": "Run Command",
+                "icon": "$(terminal)"
+            },
+            {
+                "command": "command-runner.toggleAutoRun",
+                "title": "Toggle Auto Run",
+                "icon": "$(play-circle)"
+            },
+            {
+                "command": "command-runner.refresh",
+                "title": "Refresh Commands",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "command-runner.sendToCurrent",
+                "title": "Send to Current Terminal",
+                "icon": "$(terminal)"
+            },
+            {
+                "command": "command-runner.sendToNew",
+                "title": "Send to New Terminal",
+                "icon": "$(add)"
+            },
+            {
+                "command": "command-runner.deleteCommand",
+                "title": "Delete Command",
+                "icon": "$(trash)"
+            },
+            {
+                "command": "command-runner.editCommand",
+                "title": "Edit Command",
+                "icon": "$(edit)"
+            }
+        ],
+        "views": {
+            "command-list-container": [{
+                "id": "command-list",
+                "name": "Commands",
+                "type": "tree"
+            }]
+        },
+        "viewsContainers": {
+            "activitybar": [{
+                "id": "command-list-container",
+                "title": "Command Runner",
+                "icon": "$(terminal)"
+            }]
+        },
+        "menus": {
+            "view/title": [
+                {
+                    "command": "command-runner.addCommand",
+                    "when": "view == command-list",
+                    "group": "navigation"
+                },
+                {
+                    "command": "command-runner.toggleAutoRun",
+                    "when": "view == command-list",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "command-runner.refresh",
+                    "when": "view == command-list",
+                    "group": "navigation@2"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "command-runner.sendToCurrent",
+                    "when": "view == command-list && viewItem == command",
+                    "group": "inline"
+                },
+                {
+                    "command": "command-runner.sendToNew",
+                    "when": "view == command-list && viewItem == command",
+                    "group": "inline"
+                },
+                {
+                    "command": "command-runner.editCommand",
+                    "when": "view == command-list && viewItem == command",
+                    "group": "1_modification"
+                },
+                {
+                    "command": "command-runner.deleteCommand",
+                    "when": "view == command-list && viewItem == command",
+                    "group": "1_modification"
+                }
+            ]
+        }
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "terminal",
+        "command",
+        "runner",
+        "shell",
+        "execution"
+    ],
+    "icon": "resources/icon.png",
+    "author": "",
+    "license": "MIT",
+    "type": "commonjs",
+    "publisher": "sencerhan",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/remote-command-runner"
+    },
+    "dependencies": {
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.80.0",
+        "@vscode/vsce": "^2.15.0",
+        "vscode": "^1.1.37"
+    }
+}
