@@ -13,10 +13,33 @@ const fileUtils = {
         }
     },
 
+    writeJsonFile(filePath, data) {
+        try {
+            const dirPath = path.dirname(filePath);
+            if (!fs.existsSync(dirPath)) {
+                fs.mkdirSync(dirPath, { recursive: true });
+            }
+            fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+            return true;
+        } catch (err) {
+            console.error('Error writing file:', err);
+            vscode.window.showErrorMessage(`Failed to save command: ${err.message}`);
+            return false;
+        }
+    },
+
     getLocalPath() {
         const workspaceFolders = vscode.workspace.workspaceFolders;
-        return workspaceFolders ? 
-            path.join(workspaceFolders[0].uri.fsPath, 'commands.json') : null;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            return null;
+        }
+        return path.join(workspaceFolders[0].uri.fsPath, 'commands.json');
+    },
+
+    ensureLocalFile(filePath) {
+        if (!fs.existsSync(filePath)) {
+            this.writeJsonFile(filePath, { commands: [] });
+        }
     }
 };
 
@@ -64,15 +87,23 @@ class CommandFormPanel {
             this.context.globalState.update('globalCommands', globalCommands);
         } else {
             const localPath = fileUtils.getLocalPath();
-            if (localPath) {
-                const localCommands = fileUtils.readJsonFile(localPath);
-                localCommands.commands.unshift({ name, command, global: false });
-                fileUtils.writeJsonFile(localPath, localCommands);
+            if (!localPath) {
+                vscode.window.showErrorMessage('No workspace folder found. Please open a folder first.');
+                return;
+            }
+
+            fileUtils.ensureLocalFile(localPath);
+            const localCommands = fileUtils.readJsonFile(localPath);
+            localCommands.commands.unshift({ name, command, global: false });
+            
+            if (!fileUtils.writeJsonFile(localPath, localCommands)) {
+                return; // Hata mesajı writeJsonFile içinde gösterilecek
             }
         }
 
         this.panel.dispose();
         vscode.commands.executeCommand('command-runner.refresh');
+        vscode.window.showInformationMessage(`Command "${name}" saved successfully`);
     }
 
     getWebviewContent() {
