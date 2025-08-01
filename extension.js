@@ -79,11 +79,29 @@ class CommandFormPanel {
     }
 
     saveCommand(data) {
+        console.log('SaveCommand called with:', data);
+        console.log('EditCommand:', this.editCommand);
+        
         const { name, command, global } = data;
 
         if (global) {
             const globalCommands = this.context.globalState.get('globalCommands', []);
-            globalCommands.unshift({ name, command, global: true });
+            
+            if (this.editCommand && this.editCommand.global) {
+                // Edit modunda - eski komutu bul ve güncelle
+                console.log('Editing global command');
+                const index = globalCommands.findIndex(cmd => cmd.name === this.editCommand.name);
+                if (index !== -1) {
+                    globalCommands[index] = { name, command, global: true };
+                } else {
+                    globalCommands.unshift({ name, command, global: true });
+                }
+            } else {
+                // Yeni komut ekleme
+                console.log('Adding new global command');
+                globalCommands.unshift({ name, command, global: true });
+            }
+            
             this.context.globalState.update('globalCommands', globalCommands);
         } else {
             const localPath = fileUtils.getLocalPath();
@@ -94,7 +112,21 @@ class CommandFormPanel {
 
             fileUtils.ensureLocalFile(localPath);
             const localCommands = fileUtils.readJsonFile(localPath);
-            localCommands.commands.unshift({ name, command, global: false });
+            
+            if (this.editCommand && !this.editCommand.global) {
+                // Edit modunda - eski komutu bul ve güncelle
+                console.log('Editing local command');
+                const index = localCommands.commands.findIndex(cmd => cmd.name === this.editCommand.name);
+                if (index !== -1) {
+                    localCommands.commands[index] = { name, command, global: false };
+                } else {
+                    localCommands.commands.unshift({ name, command, global: false });
+                }
+            } else {
+                // Yeni komut ekleme
+                console.log('Adding new local command');
+                localCommands.commands.unshift({ name, command, global: false });
+            }
             
             if (!fileUtils.writeJsonFile(localPath, localCommands)) {
                 return; // Hata mesajı writeJsonFile içinde gösterilecek
@@ -103,7 +135,8 @@ class CommandFormPanel {
 
         this.panel.dispose();
         vscode.commands.executeCommand('command-runner.refresh');
-        vscode.window.showInformationMessage(`Command "${name}" saved successfully`);
+        const action = this.editCommand ? 'updated' : 'saved';
+        vscode.window.showInformationMessage(`Command "${name}" ${action} successfully`);
     }
 
     getWebviewContent() {
@@ -410,6 +443,96 @@ function activate(context) {
         CommandFormPanel.show(context, item);
     });
 
+    // Export global commands
+    let exportGlobalCommands = vscode.commands.registerCommand('command-runner.exportGlobalCommands', async () => {
+        const globalCommands = context.globalState.get('globalCommands', []);
+        
+        if (globalCommands.length === 0) {
+            vscode.window.showInformationMessage('No global commands to export');
+            return;
+        }
+
+        const exportData = {
+            version: "1.0",
+            exportDate: new Date().toISOString(),
+            globalCommands: globalCommands
+        };
+
+        const options = {
+            defaultUri: vscode.Uri.file('global-commands-backup.json'),
+            filters: {
+                'JSON files': ['json']
+            }
+        };
+
+        const fileUri = await vscode.window.showSaveDialog(options);
+        if (fileUri) {
+            try {
+                await vscode.workspace.fs.writeFile(fileUri, Buffer.from(JSON.stringify(exportData, null, 2)));
+                vscode.window.showInformationMessage(`Global commands exported to ${fileUri.fsPath}`);
+            } catch (error) {
+                vscode.window.showErrorMessage(`Failed to export commands: ${error.message}`);
+            }
+        }
+    });
+
+    // Import global commands
+    let importGlobalCommands = vscode.commands.registerCommand('command-runner.importGlobalCommands', async () => {
+        const options = {
+            canSelectMany: false,
+            filters: {
+                'JSON files': ['json']
+            }
+        };
+
+        const fileUri = await vscode.window.showOpenDialog(options);
+        if (fileUri && fileUri[0]) {
+            try {
+                const fileContent = await vscode.workspace.fs.readFile(fileUri[0]);
+                const importData = JSON.parse(fileContent.toString());
+
+                // Validate the imported data
+                if (!importData.globalCommands || !Array.isArray(importData.globalCommands)) {
+                    vscode.window.showErrorMessage('Invalid backup file format');
+                    return;
+                }
+
+                // Ask user for import strategy
+                const strategy = await vscode.window.showQuickPick([
+                    { label: 'Replace All', description: 'Replace all existing global commands' },
+                    { label: 'Merge', description: 'Add to existing global commands (duplicates will be skipped)' }
+                ], {
+                    placeHolder: 'How do you want to import the commands?'
+                });
+
+                if (!strategy) return;
+
+                const currentGlobalCommands = context.globalState.get('globalCommands', []);
+                let newGlobalCommands;
+
+                if (strategy.label === 'Replace All') {
+                    newGlobalCommands = importData.globalCommands;
+                } else {
+                    // Merge - skip duplicates based on command name
+                    const existingNames = new Set(currentGlobalCommands.map(cmd => cmd.name));
+                    const newCommands = importData.globalCommands.filter(cmd => !existingNames.has(cmd.name));
+                    newGlobalCommands = [...currentGlobalCommands, ...newCommands];
+                }
+
+                await context.globalState.update('globalCommands', newGlobalCommands);
+                commandProvider.refresh();
+                
+                const importedCount = strategy.label === 'Replace All' 
+                    ? importData.globalCommands.length 
+                    : newGlobalCommands.length - currentGlobalCommands.length;
+                
+                vscode.window.showInformationMessage(`Successfully imported ${importedCount} global commands`);
+            } catch (error) {
+                vscode.window.showErrorMessage(`Failed to import commands: ${error.message}`);
+            }
+        }
+    });
+
     // Create tree view
     const treeView = vscode.window.createTreeView('command-list', {
         treeDataProvider: commandProvider
@@ -423,7 +546,9 @@ function activate(context) {
         sendToNewTerminal,
         toggleAutoRun,
         deleteCommand,
-        editCommand
+        editCommand,
+        exportGlobalCommands,
+        importGlobalCommands
     );
 }
 

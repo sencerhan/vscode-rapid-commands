@@ -1,0 +1,10 @@
+.vscode/**
+.vscode-test/**
+node_modules/**
+.gitignore
+.yarnrc
+vsc-extension-quickstart.md
+**/jsconfig.json
+**/*.map
+.nyc_output
+**/.DS_Store
